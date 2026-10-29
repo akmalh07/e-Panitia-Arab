@@ -1,0 +1,7 @@
+{
+  "name": "E-Panitia: Sistem Pengurusan Bahasa Arab",
+  "description": "A comprehensive academic and behavior management system for Malaysian primary school Arabic language committees, featuring analytics, PBD tracking, and real-time student monitoring.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

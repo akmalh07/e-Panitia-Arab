@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+@media print {
+    header, aside, nav, button, .no-print, .fixed, .floating-toolbar {
+        display: none !important;
+    }
+    
+    html, body {
+        height: auto !important;
+        overflow: visible !important;
+        background: white !important;
+        color: black !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    #root, main, .max-w-7xl {
+        display: block !important;
+        overflow: visible !important;
+        height: auto !important;
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    main {
+        padding: 1cm !important;
+    }
+
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        table-layout: auto !important;
+    }
+
+    th, td {
+        border: 1px solid #333 !important;
+        padding: 8px !important;
+        word-wrap: break-word !important;
+    }
+
+    tr {
+        page-break-inside: avoid !important;
+    }
+
+    .bg-slate-50, .bg-slate-100, .bg-sky-50, .bg-white {
+        background-color: transparent !important;
+    }
+
+    .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl {
+        box-shadow: none !important;
+    }
+
+    @page {
+        margin: 2cm;
+        size: A4 portrait;
+    }
+}
