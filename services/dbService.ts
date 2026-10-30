@@ -51,7 +51,7 @@ export const DB_KEYS = {
   PBD_RECORDS: 'panitia_pbd_records'
 };
 
-const SINGLETON_KEYS = [DB_KEYS.SESSION, DB_KEYS.CLASSES, DB_KEYS.YEARS];
+const SINGLETON_KEYS = [DB_KEYS.CLASSES, DB_KEYS.YEARS];
 
 const DEFAULT_GRADES: GradeConfig[] = [
   { id: 'A', label: 'A', min: 80, max: 100, color: '#16a34a' },
@@ -73,6 +73,12 @@ function sanitizeForFirestore(data: any): any {
 
 export const db = {
   async get<T>(key: string, initial: T): Promise<T> {
+    if (key === DB_KEYS.SESSION) {
+      localStorage.removeItem(DB_KEYS.SESSION);
+      const sess = sessionStorage.getItem(DB_KEYS.SESSION);
+      return sess ? (JSON.parse(sess) as T) : initial;
+    }
+
     const localDataStr = localStorage.getItem(key);
     const localValue: T = localDataStr ? JSON.parse(localDataStr) : initial;
 
@@ -85,7 +91,6 @@ export const db = {
         const currentDoc = snapshot.docs.find(d => d.id === 'current');
         if (currentDoc) {
           const docData = currentDoc.data();
-          if (key === DB_KEYS.SESSION) return docData as unknown as T;
           if ('items' in docData) return docData.items as unknown as T;
         }
         return snapshot.docs[0].data() as unknown as T;
@@ -143,6 +148,21 @@ export const db = {
   },
 
   async set<T>(key: string, data: T): Promise<void> {
+    if (key === DB_KEYS.SESSION) {
+      localStorage.removeItem(DB_KEYS.SESSION);
+      if (data === null || data === undefined) {
+        sessionStorage.removeItem(DB_KEYS.SESSION);
+      } else {
+        sessionStorage.setItem(DB_KEYS.SESSION, JSON.stringify(data));
+      }
+      try {
+        await deleteDoc(doc(firestore, DB_KEYS.SESSION, 'current'));
+      } catch (e) {
+        // ignore if already deleted
+      }
+      return;
+    }
+
     const cleanData = sanitizeForFirestore(data);
     localStorage.setItem(key, JSON.stringify(data));
     try {
@@ -153,11 +173,7 @@ export const db = {
 
       if (SINGLETON_KEYS.includes(key)) {
         const docRef = doc(firestore, key, 'current');
-        if (key === DB_KEYS.SESSION) {
-          await setDoc(docRef, cleanData);
-        } else {
-          await setDoc(docRef, { items: cleanData });
-        }
+        await setDoc(docRef, { items: cleanData });
         return;
       }
 
@@ -183,6 +199,10 @@ export const db = {
   },
 
   async init() {
+    try {
+      await deleteDoc(doc(firestore, DB_KEYS.SESSION, 'current'));
+    } catch (e) {}
+
     // Force a fetch first to see if data exists in Cloud
     const users = await this.get(DB_KEYS.USERS, [] as User[]);
     if (users.length === 0) {
