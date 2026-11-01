@@ -148,3 +148,67 @@ export interface PBDRecord {
   teacherId: string;
   notes?: string;
 }
+
+export interface AnnualReportActivity {
+  id: string;
+  title: string;
+  date: string;
+  category: string;
+  status: 'SELESAI' | 'DALAM_PROSES' | 'TANGGUH';
+  notes: string;
+}
+
+export interface AnnualReportProgram {
+  id: string;
+  name: string;
+  targetGroup: string;
+  implementationDate: string;
+  outcome: string;
+  achievementPercentage: number;
+}
+
+export interface AnnualReportObjective {
+  id: string;
+  objective: string;
+  targetKPI: string;
+  actualAchievement: string;
+  status: 'TERCAPAI' | 'SEBAGIAN_TERCAPAI' | 'BELUM_TERCAPAI';
+}
+
+export interface AnnualReport {
+  id: string;
+  year: number;
+  schoolName: string;
+  panitiaName: string;
+  headTeacherName: string;
+  preparedBy: string;
+  approvedBy: string;
+  datePrepared: string;
+  updatedAt: string;
+  
+  // 7 Core Sections
+  activities: AnnualReportActivity[]; // 1. Laporan Aktiviti Panitia
+  academicPrograms: AnnualReportProgram[]; // 2. Laporan Program Akademik
+  studentAchievementSummary: { // 3. Rumusan Pencapaian Murid
+    totalStudents: number;
+    overallPassRate: number;
+    averageMarks: number;
+    gradeDistribution: Record<string, number>;
+    summaryNotes: string;
+  };
+  objectives: AnnualReportObjective[]; // 4. Penilaian Pencapaian Objektif Panitia
+  swotAnalysis: { // 5. Rumusan Kekuatan dan Kelemahan
+    strengths: string[];
+    weaknesses: string[];
+    opportunities: string[];
+    threats: string[];
+  };
+  recommendations: string[]; // 6. Cadangan Penambahbaikan
+  nextYearPlan: { // 7. Perancangan Awal Bagi Tahun Berikutnya
+    goals: string[];
+    upcomingPrograms: string[];
+    budgetEstimate: string;
+    notes: string;
+  };
+}
+

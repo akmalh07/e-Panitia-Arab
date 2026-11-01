@@ -10,7 +10,8 @@ import {
   UserCog,
   Settings as SettingsIcon,
   Package,
-  ClipboardList
+  ClipboardList,
+  FileText
 } from 'lucide-react';
 
 export const COLORS = {
@@ -31,6 +32,7 @@ export const NAV_ITEMS = [
   { id: 'intervention', label: 'Intervensi', icon: <Target size={20} /> },
   { id: 'focus', label: 'Markah Fokus', icon: <Target size={20} /> },
   { id: 'assets', label: 'Aset Panitia', icon: <Package size={20} /> },
+  { id: 'annual_report', label: 'Laporan Tahunan', icon: <FileText size={20} /> },
   { id: 'staff', label: 'Pengurusan Staf', icon: <UserCog size={20} />, role: 'ADMIN' },
   { id: 'logs', label: 'Log Aktiviti', icon: <History size={20} />, role: 'ADMIN' },
   { id: 'settings', label: 'Tetapan Profil', icon: <SettingsIcon size={20} /> },

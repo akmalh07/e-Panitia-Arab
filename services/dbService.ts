@@ -48,7 +48,8 @@ export const DB_KEYS = {
   ASSET_LOGS: 'panitia_asset_logs',
   INTERVENTION: 'panitia_intervention_actions',
   PBD_SKILLS: 'panitia_pbd_skills',
-  PBD_RECORDS: 'panitia_pbd_records'
+  PBD_RECORDS: 'panitia_pbd_records',
+  ANNUAL_REPORTS: 'panitia_annual_reports'
 };
 
 const SINGLETON_KEYS = [DB_KEYS.CLASSES, DB_KEYS.YEARS];

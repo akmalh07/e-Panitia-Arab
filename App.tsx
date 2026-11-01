@@ -12,6 +12,7 @@ import FocusMarks from './components/FocusMarks';
 import StaffManagement from './components/StaffManagement';
 import AssetManagement from './components/AssetManagement';
 import Intervention from './src/components/Intervention';
+import { AnnualReportManager } from './src/components/AnnualReportManager';
 import PBDTransit from './components/PBDTransit';
 import Settings from './components/Settings';
 import { AlertCircle, CheckCircle2, CloudSync, History, Loader2 } from 'lucide-react';
@@ -441,6 +442,17 @@ const App: React.FC = () => {
           onUpdateLogs={handleUpdateAssetLogs}
           onUpdateAssetsAndLogs={handleUpdateAssetsAndLogs}
           user={user}
+        />
+      )}
+
+      {activeTab === 'annual_report' && (
+        <AnnualReportManager 
+          students={students}
+          exams={exams}
+          results={results}
+          assets={assets}
+          interventions={interventionActions}
+          pbdRecords={pbdRecords}
         />
       )}
 
