@@ -17,6 +17,7 @@ export const translations: Record<Language, Record<string, string>> = {
     logout: 'Log Keluar',
     pbd_transit: 'Rekod Transit PBD',
     annual_report: 'Laporan Tahunan',
+    signatories: 'Tandatangan',
     
     // General Actions
     save: 'Simpan',
@@ -153,6 +154,7 @@ export const translations: Record<Language, Record<string, string>> = {
     logout: 'تسجيل الخروج',
     pbd_transit: 'سجل عبور PBD',
     annual_report: 'التقرير السنوي',
+    signatories: 'التوقيعات',
     
     // General Actions
     save: 'حفظ',
@@ -289,6 +291,7 @@ export const translations: Record<Language, Record<string, string>> = {
     logout: 'Logout',
     pbd_transit: 'PBD Transit Record',
     annual_report: 'Annual Report',
+    signatories: 'Signatories',
     
     // General Actions
     save: 'Save',

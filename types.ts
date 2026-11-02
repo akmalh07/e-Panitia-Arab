@@ -212,3 +212,12 @@ export interface AnnualReport {
   };
 }
 
+export interface Signatory {
+  id: string;
+  name: string;
+  title: string; // e.g., "Ketua Panitia Bahasa Arab", "Setiausaha", "Guru Besar"
+  roleType: 'PREPARED_BY' | 'APPROVED_BY' | 'OTHER';
+  signatureImageUrl?: string; // Base64 or image URL
+}
+
+

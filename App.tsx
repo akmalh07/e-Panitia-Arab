@@ -13,6 +13,7 @@ import StaffManagement from './components/StaffManagement';
 import AssetManagement from './components/AssetManagement';
 import Intervention from './src/components/Intervention';
 import { PanitiaManager } from './src/components/PanitiaManager';
+import { SignatoryManager } from './src/components/SignatoryManager';
 import PBDTransit from './components/PBDTransit';
 import Settings from './components/Settings';
 import { AlertCircle, CheckCircle2, CloudSync, History, Loader2 } from 'lucide-react';
@@ -454,6 +455,10 @@ const App: React.FC = () => {
           interventions={interventionActions}
           pbdRecords={pbdRecords}
         />
+      )}
+
+      {activeTab === 'signatories' && (
+        <SignatoryManager user={user} />
       )}
 
       {activeTab === 'staff' && user.role === 'ADMIN' && (
