@@ -12,7 +12,7 @@ import FocusMarks from './components/FocusMarks';
 import StaffManagement from './components/StaffManagement';
 import AssetManagement from './components/AssetManagement';
 import Intervention from './src/components/Intervention';
-import { AnnualReportManager } from './src/components/AnnualReportManager';
+import { PanitiaManager } from './src/components/PanitiaManager';
 import PBDTransit from './components/PBDTransit';
 import Settings from './components/Settings';
 import { AlertCircle, CheckCircle2, CloudSync, History, Loader2 } from 'lucide-react';
@@ -446,7 +446,7 @@ const App: React.FC = () => {
       )}
 
       {activeTab === 'annual_report' && (
-        <AnnualReportManager 
+        <PanitiaManager 
           students={students}
           exams={exams}
           results={results}
