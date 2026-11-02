@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { translations } from '../src/translations';
+import { PrintOptionsModal } from './PrintOptionsModal';
 
 interface PBDTransitProps {
   students: Student[];
@@ -39,6 +40,21 @@ const PBDTransit: React.FC<PBDTransitProps> = ({
   const [selectedYear, setSelectedYear] = useState<number>(years[0] || 1);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [printFontSize, setPrintFontSize] = useState<'text-xs' | 'text-sm' | 'text-base' | 'text-lg'>('text-sm');
+  const [printForcePageBreak, setPrintForcePageBreak] = useState<boolean>(false);
+  const [printSelectedColumns, setPrintSelectedColumns] = useState<string[]>([
+    'bil', 'name', 'regNo', 'class', 'tp', 'status'
+  ]);
+  const printColumnsList = [
+    { key: 'bil', label: 'Bil' },
+    { key: 'name', label: 'Nama Murid' },
+    { key: 'regNo', label: 'No. ID' },
+    { key: 'class', label: 'Kelas' },
+    { key: 'tp', label: 'Tahap Penguasaan (TP)' },
+    { key: 'status', label: 'Status' }
+  ];
 
   const toggleClassSelection = (className: string) => {
     if (selectedClasses.includes(className)) {
@@ -342,6 +358,12 @@ const PBDTransit: React.FC<PBDTransitProps> = ({
             title="Muat turun data PBD dalam format Excel"
           >
             <FileSpreadsheet size={16} /> Excel
+          </button>
+          <button 
+            onClick={() => setIsPrintModalOpen(true)}
+            className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg cursor-pointer"
+          >
+            <Printer size={16} /> Pilihan Cetakan / PDF
           </button>
 
           <button 
@@ -1644,6 +1666,31 @@ const PBDTransit: React.FC<PBDTransitProps> = ({
           </div>
         </div>
       )}
+
+      <PrintOptionsModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        title="Pilihan Cetakan Rekod Transit PBD & PDF"
+        columns={printColumnsList}
+        selectedColumns={printSelectedColumns}
+        onToggleColumn={(key) => {
+          if (printSelectedColumns.includes(key)) {
+            setPrintSelectedColumns(printSelectedColumns.filter(c => c !== key));
+          } else {
+            setPrintSelectedColumns([...printSelectedColumns, key]);
+          }
+        }}
+        onSelectAll={(select) => {
+          if (select) setPrintSelectedColumns(printColumnsList.map(c => c.key));
+          else setPrintSelectedColumns([]);
+        }}
+        fontSize={printFontSize}
+        onChangeFontSize={setPrintFontSize}
+        forcePageBreak={printForcePageBreak}
+        onChangeForcePageBreak={setPrintForcePageBreak}
+        onPrint={() => window.print()}
+        lang={lang}
+      />
     </div>
   );
 };

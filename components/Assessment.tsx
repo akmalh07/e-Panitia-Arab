@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 import { translations } from '../src/translations';
 import { aiService } from '../services/aiService';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend, LineChart, Line } from 'recharts';
+import { PrintOptionsModal } from './PrintOptionsModal';
 
 // Helper function for local pedagogical recommendations
 const getLocalPedagogicalRecommendation = (studentName: string, itemsPerformance: Array<{label: string, desc: string, pct: number}>) => {
@@ -157,6 +158,23 @@ const Assessment: React.FC<AssessmentProps> = ({ students, exams, results, grade
   // State untuk Tapisan Jadual Markah
   const [filterSubClass, setFilterSubClass] = useState<string>('');
   const [filterPerformanceGroup, setFilterPerformanceGroup] = useState<'ALL' | 'CEMERLANG' | 'SEDERHANA' | 'LEMAH'>('ALL');
+
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [printFontSize, setPrintFontSize] = useState<'text-xs' | 'text-sm' | 'text-base' | 'text-lg'>('text-sm');
+  const [printForcePageBreak, setPrintForcePageBreak] = useState<boolean>(false);
+  const [printSelectedColumns, setPrintSelectedColumns] = useState<string[]>([
+    'bil', 'name', 'regNo', 'class', 'marks', 'grade', 'status'
+  ]);
+
+  const printColumnsList = [
+    { key: 'bil', label: 'Bil' },
+    { key: 'name', label: 'Nama Murid' },
+    { key: 'regNo', label: 'No. ID' },
+    { key: 'class', label: 'Kelas' },
+    { key: 'marks', label: 'Markah' },
+    { key: 'grade', label: 'Gred' },
+    { key: 'status', label: 'Status' }
+  ];
 
   const getGradeHelper = (marks: number | null, isAbsent?: boolean, exam?: Exam | null) => {
     if (isAbsent || marks === null) return { label: 'TH', color: '#ef4444', textClass: 'text-red-600 bg-red-50 border-red-200' };
@@ -679,9 +697,15 @@ const Assessment: React.FC<AssessmentProps> = ({ students, exams, results, grade
           <p className="text-slate-500 text-sm">{t.assessment_desc}</p>
         </div>
         <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+          <button
+            onClick={() => setIsPrintModalOpen(true)}
+            className="flex items-center gap-2 bg-sky-600 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-sky-700 transition-all shadow-lg cursor-pointer"
+          >
+            <Printer size={14} /> Pilihan Cetakan / PDF
+          </button>
           <button 
             onClick={() => setIsGradeModalOpen(true)}
-            className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg"
+            className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg cursor-pointer"
           >
             <Edit3 size={14} /> {t.manage_grades || 'Urus Gred'}
           </button>
@@ -690,7 +714,7 @@ const Assessment: React.FC<AssessmentProps> = ({ students, exams, results, grade
               setEditingExamId(null); 
               setExamForm({ name: '', date: new Date().toISOString().split('T')[0], type: ExamType.PBD, totalMarks: 50, scaledTotal: 100, items: [{ id: '1', label: 'Item 1', description: 'Tatabahasa', maxMarks: 50 }], targetYears: [], themeColor: '#0ea5e9', gradeConfigs: undefined });
               setIsExamModalOpen(true); 
-            }} className="bg-sky-600 text-white px-5 py-2.5 rounded-xl shadow-lg font-bold flex items-center gap-2 hover:bg-sky-700">
+            }} className="bg-sky-600 text-white px-5 py-2.5 rounded-xl shadow-lg font-bold flex items-center gap-2 hover:bg-sky-700 cursor-pointer">
               <Plus size={20} /> {t.create_exam}
             </button>
           )}
@@ -2870,6 +2894,31 @@ const Assessment: React.FC<AssessmentProps> = ({ students, exams, results, grade
           </div>
         </div>
       )}
+
+      <PrintOptionsModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        title="Pilihan Cetakan Pentaksiran & PDF"
+        columns={printColumnsList}
+        selectedColumns={printSelectedColumns}
+        onToggleColumn={(key) => {
+          if (printSelectedColumns.includes(key)) {
+            setPrintSelectedColumns(printSelectedColumns.filter(c => c !== key));
+          } else {
+            setPrintSelectedColumns([...printSelectedColumns, key]);
+          }
+        }}
+        onSelectAll={(select) => {
+          if (select) setPrintSelectedColumns(printColumnsList.map(c => c.key));
+          else setPrintSelectedColumns([]);
+        }}
+        fontSize={printFontSize}
+        onChangeFontSize={setPrintFontSize}
+        forcePageBreak={printForcePageBreak}
+        onChangeForcePageBreak={setPrintForcePageBreak}
+        onPrint={() => window.print()}
+        lang={lang}
+      />
     </div>
   );
 };
