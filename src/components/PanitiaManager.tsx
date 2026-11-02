@@ -5,7 +5,8 @@ import {
   Result, 
   Asset, 
   InterventionAction, 
-  PBDRecord 
+  PBDRecord,
+  Signatory
 } from '../../types';
 import { db, DB_KEYS } from '../../services/dbService';
 import { exportAnnualReportToDocx } from '../../services/docxExportService';
@@ -202,6 +203,20 @@ export const PanitiaManager: React.FC<PanitiaManagerProps> = ({
   const [printFontSize, setPrintFontSize] = useState<'text-xs' | 'text-sm' | 'text-base' | 'text-lg'>('text-sm');
   const [forcePageBreak, setForcePageBreak] = useState<boolean>(true);
   const [selectedPrintCols, setSelectedPrintCols] = useState<string[]>(['all']);
+  const [signatories, setSignatories] = useState<Signatory[]>([]);
+
+  useEffect(() => {
+    db.get<Signatory[]>(DB_KEYS.SIGNATORIES, [
+      { id: '1', name: 'MOHAMAD AKMAL HAKIM BIN HIPNI', title: 'Ketua Panitia Bahasa Arab', roleType: 'PREPARED_BY', signatureImageUrl: '' },
+      { id: '2', name: 'Dr. Hj. Ibrahim bin Ismail', title: 'Guru Besar SRA Datuk Haji Mohamad Mortadza Haji Daud', roleType: 'APPROVED_BY', signatureImageUrl: '' }
+    ]).then(setSignatories);
+
+    const handleSync = () => {
+      db.get<Signatory[]>(DB_KEYS.SIGNATORIES, []).then(setSignatories);
+    };
+    window.addEventListener('storage_sync', handleSync);
+    return () => window.removeEventListener('storage_sync', handleSync);
+  }, []);
 
   // Initial State Data
   const [fileData, setFileData] = useState<PanitiaFileState>({
@@ -1199,20 +1214,34 @@ export const PanitiaManager: React.FC<PanitiaManagerProps> = ({
           )}
 
           {/* Signatures */}
-          <div className="pt-10 border-t grid grid-cols-2 gap-8 text-xs font-bold text-slate-700">
-            <div>
-              <p>Disediakan oleh:</p>
-              <div className="h-16 border-b border-dashed my-2"></div>
-              <p>({fileData.preparedBy})</p>
-              <p className="text-[10px] text-slate-400">Ketua Panitia {fileData.panitiaName}</p>
-            </div>
-            <div>
-              <p>Disahkan oleh:</p>
-              <div className="h-16 border-b border-dashed my-2"></div>
-              <p>({fileData.approvedBy})</p>
-              <p className="text-[10px] text-slate-400">Guru Besar / GPK Pentadbiran</p>
-            </div>
-          </div>
+          {(() => {
+            const preparedSig = signatories.find(s => s.roleType === 'PREPARED_BY') || { name: fileData.preparedBy, title: `Ketua Panitia ${fileData.panitiaName}`, signatureImageUrl: '' };
+            const approvedSig = signatories.find(s => s.roleType === 'APPROVED_BY') || { name: fileData.approvedBy, title: 'Guru Besar / GPK Pentadbiran', signatureImageUrl: '' };
+            return (
+              <div className="pt-10 border-t grid grid-cols-2 gap-8 text-xs font-bold text-slate-700">
+                <div>
+                  <p>Disediakan oleh:</p>
+                  <div className="h-20 border-b border-dashed my-2 relative flex items-center justify-center">
+                    {preparedSig.signatureImageUrl && (
+                      <img src={preparedSig.signatureImageUrl} alt="Tandatangan" className="max-h-16 object-contain absolute" />
+                    )}
+                  </div>
+                  <p className="font-black text-slate-900">({preparedSig.name})</p>
+                  <p className="text-[10px] text-slate-500 font-semibold">{preparedSig.title}</p>
+                </div>
+                <div>
+                  <p>Disahkan oleh:</p>
+                  <div className="h-20 border-b border-dashed my-2 relative flex items-center justify-center">
+                    {approvedSig.signatureImageUrl && (
+                      <img src={approvedSig.signatureImageUrl} alt="Tandatangan" className="max-h-16 object-contain absolute" />
+                    )}
+                  </div>
+                  <p className="font-black text-slate-900">({approvedSig.name})</p>
+                  <p className="text-[10px] text-slate-500 font-semibold">{approvedSig.title}</p>
+                </div>
+              </div>
+            );
+          })()}
 
         </div>
       </div>
