@@ -206,10 +206,10 @@ export const PanitiaManager: React.FC<PanitiaManagerProps> = ({
   // Initial State Data
   const [fileData, setFileData] = useState<PanitiaFileState>({
     year: currentYear,
-    schoolName: 'SEKOLAH KEBANGSAAN SK PUSAT',
+    schoolName: 'SEKOLAH RENDAH AGAMA DATUK HAJI MOHAMAD MORTADZA HAJI DAUD',
     panitiaName: 'BAHASA ARAB',
-    headTeacherName: 'GURU BESAR SK PUSAT',
-    preparedBy: 'USTAZ KETUA PANITIA',
+    headTeacherName: 'GURU BESAR SRA DATUK HAJI MOHAMAD MORTADZA HAJI DAUD',
+    preparedBy: 'MOHAMAD AKMAL HAKIM BIN HIPNI',
     approvedBy: 'GURU BESAR / GPK PENTADBIRAN',
     datePrepared: new Date().toISOString().split('T')[0],
 
@@ -219,7 +219,7 @@ export const PanitiaManager: React.FC<PanitiaManagerProps> = ({
       subjectInfo: 'Mata Pelajaran Bahasa Arab Kurikulum Standard Sekolah Rendah (KSSR)',
       orgChartNotes: 'Carta Organisasi Jawatankuasa Induk Kurikulum & Panitia Bahasa Arab Sekolah',
       teachers: [
-        { name: 'Ustaz Akmal bin Ahmad', email: 'akmal@moe.gov.my', role: 'Ketua Panitia' },
+        { name: 'MOHAMAD AKMAL HAKIM BIN HIPNI', email: 'akmal@moe.gov.my', role: 'Ketua Panitia' },
         { name: 'Ustazah Fatimah binti Omar', email: 'fatimah@moe.gov.my', role: 'Setiausaha' },
         { name: 'Ustaz Zulkifli bin Hassan', email: 'zulkifli@moe.gov.my', role: 'Ahli Jawatankuasa' }
       ],

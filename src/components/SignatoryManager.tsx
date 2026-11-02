@@ -23,9 +23,9 @@ export const SignatoryManager: React.FC<SignatoryManagerProps> = ({ user }) => {
 
   const loadSignatories = async () => {
     const list = await db.get<Signatory[]>(DB_KEYS.SIGNATORIES, [
-      { id: '1', name: 'Ustaz Akmal bin Ahmad', title: 'Ketua Panitia Bahasa Arab', roleType: 'PREPARED_BY', signatureImageUrl: '' },
+      { id: '1', name: 'MOHAMAD AKMAL HAKIM BIN HIPNI', title: 'Ketua Panitia Bahasa Arab', roleType: 'PREPARED_BY', signatureImageUrl: '' },
       { id: '2', name: 'Ustazah Fatimah binti Omar', title: 'Setiausaha Panitia Bahasa Arab', roleType: 'OTHER', signatureImageUrl: '' },
-      { id: '3', name: 'Dr. Hj. Ibrahim bin Ismail', title: 'Guru Besar SK Pusat', roleType: 'APPROVED_BY', signatureImageUrl: '' }
+      { id: '3', name: 'Dr. Hj. Ibrahim bin Ismail', title: 'Guru Besar SRA Datuk Haji Mohamad Mortadza Haji Daud', roleType: 'APPROVED_BY', signatureImageUrl: '' }
     ]);
     setSignatories(list);
   };
