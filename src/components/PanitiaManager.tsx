@@ -235,8 +235,7 @@ export const PanitiaManager: React.FC<PanitiaManagerProps> = ({
       orgChartNotes: 'Carta Organisasi Jawatankuasa Induk Kurikulum & Panitia Bahasa Arab Sekolah',
       teachers: [
         { name: 'MOHAMAD AKMAL HAKIM BIN HIPNI', email: 'akmal@moe.gov.my', role: 'Ketua Panitia' },
-        { name: 'Ustazah Fatimah binti Omar', email: 'fatimah@moe.gov.my', role: 'Setiausaha' },
-        { name: 'Ustaz Zulkifli bin Hassan', email: 'zulkifli@moe.gov.my', role: 'Ahli Jawatankuasa' }
+        { name: 'Ustazah Fatimah binti Omar', email: 'fatimah@moe.gov.my', role: 'Setiausaha' }
       ],
       appointmentLetterRef: 'KPM.600-4/1/2 Jld.3 (45)',
       duties: ['Menyelaras Rancangan Pengajaran Tahunan (RPT) dan DSKP', 'Menyemak buku latihan murid secara berkala', 'Merancang program peningkatan akademik dan intervensi'],
@@ -736,10 +735,23 @@ export const PanitiaManager: React.FC<PanitiaManagerProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-2">Senarai Nama Guru Mengajar & Peranan</label>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-xs font-bold text-slate-700">Senarai Nama Guru Mengajar & Peranan</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newTeachers = [...fileData.p01.teachers, { name: '', email: '', role: 'Ahli Jawatankuasa' }];
+                        setFileData({...fileData, p01: {...fileData.p01, teachers: newTeachers}});
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-black transition"
+                    >
+                      <Plus size={14} />
+                      <span>Tambah Guru</span>
+                    </button>
+                  </div>
                   <div className="space-y-2">
                     {fileData.p01.teachers.map((t, idx) => (
-                      <div key={idx} className="flex gap-2">
+                      <div key={idx} className="flex gap-2 items-center">
                         <input
                           type="text"
                           value={t.name}
@@ -749,7 +761,7 @@ export const PanitiaManager: React.FC<PanitiaManagerProps> = ({
                             setFileData({...fileData, p01: {...fileData.p01, teachers: updated}});
                           }}
                           className="flex-1 p-2.5 border rounded-xl text-xs font-bold"
-                          placeholder="Nama Guru"
+                          placeholder="Nama Penuh Guru"
                         />
                         <input
                           type="text"
@@ -760,8 +772,19 @@ export const PanitiaManager: React.FC<PanitiaManagerProps> = ({
                             setFileData({...fileData, p01: {...fileData.p01, teachers: updated}});
                           }}
                           className="w-48 p-2.5 border rounded-xl text-xs font-bold"
-                          placeholder="Peranan"
+                          placeholder="Peranan (Cth: Ketua Panitia)"
                         />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = fileData.p01.teachers.filter((_, i) => i !== idx);
+                            setFileData({...fileData, p01: {...fileData.p01, teachers: updated}});
+                          }}
+                          className="p-2.5 text-slate-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition"
+                          title="Padam guru"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     ))}
                   </div>
