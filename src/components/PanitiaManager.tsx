@@ -212,7 +212,7 @@ export const PanitiaManager: React.FC<PanitiaManagerProps> = ({
     ]).then(setSignatories);
 
     const handleSync = () => {
-      db.get<Signatory[]>(DB_KEYS.SIGNATORIES, []).then(setSignatories);
+      db.get<Signatory[]>(DB_KEYS.SIGNATORIES, [], { skipRemote: true }).then(setSignatories);
     };
     window.addEventListener('storage_sync', handleSync);
     return () => window.removeEventListener('storage_sync', handleSync);

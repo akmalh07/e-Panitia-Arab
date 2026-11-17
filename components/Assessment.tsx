@@ -118,12 +118,15 @@ interface AssessmentProps {
   onUpdateExam: (exam: Exam) => void;
   onDeleteExam: (id: string) => void;
   onUpdateResult: (result: Omit<Result, 'id'>) => void;
+  onBulkUpdateResults?: (results: Omit<Result, 'id'>[]) => void;
   onUndo: () => void;
   currentUser: User;
   onUpdateGrades: (configs: GradeConfig[]) => void;
 }
 
-const Assessment: React.FC<AssessmentProps> = ({ students, exams, results, gradeConfigs, onAddExam, onUpdateExam, onDeleteExam, onUpdateResult, onUndo, currentUser, onUpdateGrades }) => {
+const Assessment: React.FC<AssessmentProps> = ({ students, exams, results, gradeConfigs, onAddExam, onUpdateExam, onDeleteExam, onUpdateResult, onBulkUpdateResults, onUndo, currentUser, onUpdateGrades }) => {
+  const latestResultsRef = React.useRef<Result[]>(results);
+  latestResultsRef.current = results;
   const lang: Language = currentUser.language || 'ms';
   const t = translations[lang];
   const isRTL = lang === 'ar';
@@ -552,12 +555,12 @@ const Assessment: React.FC<AssessmentProps> = ({ students, exams, results, grade
 
   const handleItemMarkChange = (studentId: string, itemId: string, mark: number) => {
     if (!selectedExamId || !selectedExam) return;
-    const currentResult = results.find(r => r.studentId === studentId && r.examId === selectedExamId);
+    const currentResult = latestResultsRef.current.find(r => r.studentId === studentId && r.examId === selectedExamId);
     const newItemMarks = { ...(currentResult?.itemMarks || {}), [itemId]: mark };
     const rawTotal = Object.values(newItemMarks).reduce((a, b) => (a as number) + (b as number), 0) as number;
     const scaledMark = Math.round((rawTotal / (selectedExam.totalMarks || 1)) * (selectedExam.scaledTotal || 100));
 
-    onUpdateResult({
+    const updatedPayload: Omit<Result, 'id'> = {
       studentId,
       examId: selectedExamId,
       marks: scaledMark,
@@ -566,12 +569,24 @@ const Assessment: React.FC<AssessmentProps> = ({ students, exams, results, grade
       itemMarks: newItemMarks,
       updatedAt: new Date().toISOString(),
       updatedBy: currentUser.name
-    });
+    };
+
+    // Update local ref immediately so rapid edits across multiple items never lose earlier items
+    const existingIdx = latestResultsRef.current.findIndex(r => r.studentId === studentId && r.examId === selectedExamId);
+    if (existingIdx > -1) {
+      const next = [...latestResultsRef.current];
+      next[existingIdx] = { ...next[existingIdx], ...updatedPayload };
+      latestResultsRef.current = next;
+    } else {
+      latestResultsRef.current = [...latestResultsRef.current, { ...updatedPayload, id: 'temp_' + studentId }];
+    }
+
+    onUpdateResult(updatedPayload);
   };
 
   const toggleAbsent = (studentId: string) => {
     if (!selectedExamId) return;
-    const current = results.find(r => r.studentId === studentId && r.examId === selectedExamId);
+    const current = latestResultsRef.current.find(r => r.studentId === studentId && r.examId === selectedExamId);
     onUpdateResult({
       studentId,
       examId: selectedExamId,
@@ -588,6 +603,9 @@ const Assessment: React.FC<AssessmentProps> = ({ students, exams, results, grade
     e.preventDefault();
     if (!selectedExamId || !selectedExam) return;
     const lines = bulkMarksText.split('\n').map(l => l.trim());
+    const now = new Date().toISOString();
+    const updates: Omit<Result, 'id'>[] = [];
+
     lines.forEach((markStr, index) => {
       if (index < filteredStudents.length) {
         const student = filteredStudents[index];
@@ -595,18 +613,26 @@ const Assessment: React.FC<AssessmentProps> = ({ students, exams, results, grade
         const isAbsent = markStr.toUpperCase() === 'TH';
         const rawMark = isAbsent ? 0 : (parseInt(markStr) || 0);
         const scaledMark = isAbsent ? 0 : Math.round((rawMark / (selectedExam.totalMarks || 1)) * (selectedExam.scaledTotal || 100));
-        onUpdateResult({
+        updates.push({
           studentId: student.id,
           examId: selectedExamId,
           marks: scaledMark,
           rawMarks: rawMark,
           isAbsent: isAbsent,
           itemMarks: {}, 
-          updatedAt: new Date().toISOString(),
+          updatedAt: now,
           updatedBy: currentUser.name
         });
       }
     });
+
+    if (updates.length > 0) {
+      if (onBulkUpdateResults) {
+        onBulkUpdateResults(updates);
+      } else {
+        updates.forEach(u => onUpdateResult(u));
+      }
+    }
     setBulkMarksText('');
     setIsBulkMarksModalOpen(false);
   };
@@ -614,24 +640,39 @@ const Assessment: React.FC<AssessmentProps> = ({ students, exams, results, grade
   const handleBulkGridSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedExamId || !selectedExam) return;
+    const now = new Date().toISOString();
+    const updates: Omit<Result, 'id'>[] = [];
+
     filteredStudents.forEach(student => {
       const entry = bulkGridState[student.id];
       if (!entry) return;
+      const hasExisting = latestResultsRef.current.some(r => r.studentId === student.id && r.examId === selectedExamId);
+      const hasItemMarks = entry.itemMarks && Object.values(entry.itemMarks).some(v => v !== '' && v !== undefined);
+      if (!entry.isAbsent && entry.rawMarks === '' && !hasItemMarks && !hasExisting) return;
+
       const isAbsent = entry.isAbsent;
       const rawTotal = isAbsent ? 0 : (parseInt(entry.rawMarks || '0') || 0);
       const scaledMark = isAbsent ? 0 : Math.round((rawTotal / (selectedExam.totalMarks || 1)) * (selectedExam.scaledTotal || 100));
 
-      onUpdateResult({
+      updates.push({
         studentId: student.id,
         examId: selectedExamId,
         marks: scaledMark,
         rawMarks: rawTotal,
         isAbsent,
         itemMarks: isAbsent ? {} : (entry.itemMarks ? Object.fromEntries(Object.entries(entry.itemMarks).map(([k, v]) => [k, parseInt(v) || 0])) : {}),
-        updatedAt: new Date().toISOString(),
+        updatedAt: now,
         updatedBy: currentUser.name
       });
     });
+
+    if (updates.length > 0) {
+      if (onBulkUpdateResults) {
+        onBulkUpdateResults(updates);
+      } else {
+        updates.forEach(u => onUpdateResult(u));
+      }
+    }
     setIsBulkMarksModalOpen(false);
   };
 

@@ -44,10 +44,13 @@ const App: React.FC = () => {
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
   
   const resultHistory = useRef<Result[][]>([]);
+  const resultsRef = useRef<Result[]>([]);
+  const pbdRecordsRef = useRef<PBDRecord[]>([]);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleLogout = useCallback(async () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    await db.flush();
     await db.set(DB_KEYS.SESSION, null);
     setUser(null);
   }, []);
@@ -76,30 +79,32 @@ const App: React.FC = () => {
     };
   }, [user, resetTimer]);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (skipRemote = false) => {
+    if (!skipRemote) setLoading(true);
     try {
+      const opts = skipRemote ? { skipRemote: true } : undefined;
       const [s, e, r, f, fa, as, al, l, u, c, y, sess, gc, ia, ps, pr] = await Promise.all([
-        db.get<Student[]>(DB_KEYS.STUDENTS, []),
-        db.get<Exam[]>(DB_KEYS.EXAMS, []),
-        db.get<Result[]>(DB_KEYS.RESULTS, []),
-        db.get<FocusPoint[]>(DB_KEYS.FOCUS, []),
-        db.get<FocusAction[]>(DB_KEYS.FOCUS_ACTIONS, []),
-        db.get<Asset[]>(DB_KEYS.ASSETS, []),
-        db.get<AssetLog[]>(DB_KEYS.ASSET_LOGS, []),
-        db.get<ActivityLog[]>(DB_KEYS.LOGS, []),
-        db.get<User[]>(DB_KEYS.USERS, []),
-        db.get<string[]>(DB_KEYS.CLASSES, CLASSES),
-        db.get<number[]>(DB_KEYS.YEARS, YEARS),
-        db.get<User | null>(DB_KEYS.SESSION, null),
-        db.get<GradeConfig[]>(DB_KEYS.GRADES, []),
-        db.get<InterventionAction[]>(DB_KEYS.INTERVENTION, []),
-        db.get<PBDSkill[]>(DB_KEYS.PBD_SKILLS, []),
-        db.get<PBDRecord[]>(DB_KEYS.PBD_RECORDS, [])
+        db.get<Student[]>(DB_KEYS.STUDENTS, [], opts),
+        db.get<Exam[]>(DB_KEYS.EXAMS, [], opts),
+        db.get<Result[]>(DB_KEYS.RESULTS, [], opts),
+        db.get<FocusPoint[]>(DB_KEYS.FOCUS, [], opts),
+        db.get<FocusAction[]>(DB_KEYS.FOCUS_ACTIONS, [], opts),
+        db.get<Asset[]>(DB_KEYS.ASSETS, [], opts),
+        db.get<AssetLog[]>(DB_KEYS.ASSET_LOGS, [], opts),
+        db.get<ActivityLog[]>(DB_KEYS.LOGS, [], opts),
+        db.get<User[]>(DB_KEYS.USERS, [], opts),
+        db.get<string[]>(DB_KEYS.CLASSES, CLASSES, opts),
+        db.get<number[]>(DB_KEYS.YEARS, YEARS, opts),
+        db.get<User | null>(DB_KEYS.SESSION, null, opts),
+        db.get<GradeConfig[]>(DB_KEYS.GRADES, [], opts),
+        db.get<InterventionAction[]>(DB_KEYS.INTERVENTION, [], opts),
+        db.get<PBDSkill[]>(DB_KEYS.PBD_SKILLS, [], opts),
+        db.get<PBDRecord[]>(DB_KEYS.PBD_RECORDS, [], opts)
       ]);
 
       setStudents(s);
       setExams(e);
+      resultsRef.current = r;
       setResults(r);
       setFocusPoints(f);
       setFocusActions(fa);
@@ -116,19 +121,23 @@ const App: React.FC = () => {
       setGradeConfigs(gc);
       setInterventionActions(ia);
       setPbdSkills(ps);
+      pbdRecordsRef.current = pr;
       setPbdRecords(pr);
       if (sess) setUser(sess);
     } catch (err) {
       notify('Ralat memuatkan data', 'error');
     } finally {
-      setLoading(false);
+      if (!skipRemote) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadData();
-    window.addEventListener('storage_sync', loadData);
-    return () => window.removeEventListener('storage_sync', loadData);
+    loadData(false);
+    const onSync = () => {
+      loadData(true);
+    };
+    window.addEventListener('storage_sync', onSync);
+    return () => window.removeEventListener('storage_sync', onSync);
   }, [loadData]);
 
   const notify = (msg: string, type: 'success' | 'error' = 'success') => {
@@ -213,17 +222,38 @@ const App: React.FC = () => {
   };
 
   const handleUpdateResult = async (data: Omit<Result, 'id'>) => {
-    resultHistory.current.push([...results]);
-    const existingIndex = results.findIndex(r => r.studentId === data.studentId && r.examId === data.examId);
-    let newList;
+    const current = resultsRef.current;
+    resultHistory.current.push([...current]);
+    const existingIndex = current.findIndex(r => r.studentId === data.studentId && r.examId === data.examId);
+    let newList: Result[];
     if (existingIndex > -1) {
-      newList = [...results];
+      newList = [...current];
       newList[existingIndex] = { ...newList[existingIndex], ...data };
     } else {
-      newList = [...results, { ...data, id: Math.random().toString(36).substr(2, 9) }];
+      newList = [...current, { ...data, id: Math.random().toString(36).substr(2, 9) }];
     }
+    resultsRef.current = newList;
     setResults(newList);
     await syncToCloud(() => db.set(DB_KEYS.RESULTS, newList));
+  };
+
+  const handleBulkUpdateResults = async (items: Omit<Result, 'id'>[]) => {
+    if (items.length === 0) return;
+    const current = resultsRef.current;
+    resultHistory.current.push([...current]);
+    const newList = [...current];
+    for (const data of items) {
+      const existingIndex = newList.findIndex(r => r.studentId === data.studentId && r.examId === data.examId);
+      if (existingIndex > -1) {
+        newList[existingIndex] = { ...newList[existingIndex], ...data };
+      } else {
+        newList.push({ ...data, id: Math.random().toString(36).substr(2, 9) });
+      }
+    }
+    resultsRef.current = newList;
+    setResults(newList);
+    await syncToCloud(() => db.set(DB_KEYS.RESULTS, newList));
+    notify(`${items.length} rekod markah murid berjaya disimpan!`);
   };
 
   const handleUpdateExam = async (updatedExam: Exam) => {
@@ -234,14 +264,16 @@ const App: React.FC = () => {
   };
 
   const handleUpdatePBDRecord = async (data: Omit<PBDRecord, 'id'>) => {
-    const existingIndex = pbdRecords.findIndex(r => r.studentId === data.studentId && r.skillId === data.skillId);
-    let newList;
+    const current = pbdRecordsRef.current;
+    const existingIndex = current.findIndex(r => r.studentId === data.studentId && r.skillId === data.skillId);
+    let newList: PBDRecord[];
     if (existingIndex > -1) {
-      newList = [...pbdRecords];
+      newList = [...current];
       newList[existingIndex] = { ...newList[existingIndex], ...data };
     } else {
-      newList = [...pbdRecords, { ...data, id: Math.random().toString(36).substr(2, 9) }];
+      newList = [...current, { ...data, id: Math.random().toString(36).substr(2, 9) }];
     }
+    pbdRecordsRef.current = newList;
     setPbdRecords(newList);
     await syncToCloud(() => db.set(DB_KEYS.PBD_RECORDS, newList));
   };
@@ -335,9 +367,11 @@ const App: React.FC = () => {
             syncToCloud(() => db.delete(DB_KEYS.EXAMS, id, newList));
           }}
           onUpdateResult={handleUpdateResult} 
+          onBulkUpdateResults={handleBulkUpdateResults}
           onUndo={() => {
             const last = resultHistory.current.pop();
             if (last) { 
+              resultsRef.current = last;
               setResults(last); 
               syncToCloud(() => db.set(DB_KEYS.RESULTS, last)); 
               notify('Undo Berjaya'); 
