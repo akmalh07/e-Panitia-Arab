@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Student, Gender, User, Language } from '../types';
-import { Search, Trash2, X, Users, UserPlus, FileUp, Filter, Download, ListChecks, ClipboardPaste, RotateCcw, Settings2, Plus, Check, Edit2, CheckSquare, Square } from 'lucide-react';
+import { Search, Trash2, X, Users, UserPlus, FileUp, Filter, Download, ListChecks, ClipboardPaste, RotateCcw, Settings2, Plus, Check, Edit2, CheckSquare, Square, ArrowRightLeft, ShieldCheck } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { translations } from '../src/translations';
 
@@ -12,6 +12,7 @@ interface StudentListProps {
   onAdd: (student: Omit<Student, 'id'>) => void;
   onBulkAdd: (students: Omit<Student, 'id'>[]) => void;
   onUpdate: (student: Student) => void;
+  onBulkUpdate?: (students: Student[]) => void;
   onDelete: (id: string) => void;
   onBulkDelete: (ids: string[]) => void;
   onUpdateClasses: (classes: string[]) => void;
@@ -20,7 +21,7 @@ interface StudentListProps {
 }
 
 const StudentList: React.FC<StudentListProps> = ({ 
-  students, classes, years, onAdd, onBulkAdd, onUpdate, onDelete, onBulkDelete, onUpdateClasses, isAdmin, user 
+  students, classes, years, onAdd, onBulkAdd, onUpdate, onBulkUpdate, onDelete, onBulkDelete, onUpdateClasses, isAdmin, user 
 }) => {
   const lang: Language = user.language || 'ms';
   const t = translations[lang];
@@ -38,6 +39,9 @@ const StudentList: React.FC<StudentListProps> = ({
   const [editingValue, setEditingValue] = useState('');
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [isBulkTransferModalOpen, setIsBulkTransferModalOpen] = useState(false);
+  const [bulkTransferTarget, setBulkTransferTarget] = useState<{ year: number; class: string }>({ year: 1, class: '' });
 
   // State for single add
   const [formData, setFormData] = useState<Omit<Student, 'id'>>({
@@ -85,6 +89,21 @@ const StudentList: React.FC<StudentListProps> = ({
     return safeClasses.filter(c => c.startsWith(String(bulkPasteData.year)));
   }, [safeClasses, bulkPasteData.year]);
 
+  const availableClassesForEditYear = useMemo(() => {
+    if (!editingStudent) return safeClasses;
+    const matched = safeClasses.filter(c => c.startsWith(String(editingStudent.year)));
+    const base = matched.length > 0 ? matched : safeClasses;
+    if (editingStudent.class && !base.includes(editingStudent.class)) {
+      return [editingStudent.class, ...base];
+    }
+    return base;
+  }, [safeClasses, editingStudent]);
+
+  const availableClassesForTransferYear = useMemo(() => {
+    const matched = safeClasses.filter(c => c.startsWith(String(bulkTransferTarget.year)));
+    return matched.length > 0 ? matched : safeClasses;
+  }, [safeClasses, bulkTransferTarget.year]);
+
   const resetFilters = () => {
     setSearchTerm('');
     setFilterYear('');
@@ -115,10 +134,25 @@ const StudentList: React.FC<StudentListProps> = ({
   };
 
   const handleSaveEditClass = (index: number) => {
-    if (!editingValue.trim()) return;
+    const newName = editingValue.trim();
+    if (!newName) return;
+    const oldName = safeClasses[index];
     const updated = [...safeClasses];
-    updated[index] = editingValue.trim();
+    updated[index] = newName;
     onUpdateClasses(updated.sort((a, b) => a.localeCompare(b)));
+
+    if (oldName && oldName !== newName) {
+      const affectedStudents = students
+        .filter(s => s.class === oldName)
+        .map(s => ({ ...s, class: newName }));
+      if (affectedStudents.length > 0) {
+        if (onBulkUpdate) {
+          onBulkUpdate(affectedStudents);
+        } else {
+          affectedStudents.forEach(s => onUpdate(s));
+        }
+      }
+    }
     setEditingIndex(null);
   };
 
@@ -255,6 +289,54 @@ const StudentList: React.FC<StudentListProps> = ({
     }
   };
 
+  const openEditStudentModal = (student: Student) => {
+    setEditingStudent({ ...student });
+  };
+
+  const handleSaveStudentEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStudent || !editingStudent.name.trim() || !editingStudent.class) return;
+    const normalized: Student = {
+      ...editingStudent,
+      name: editingStudent.name.trim().toUpperCase(),
+      regNo: editingStudent.regNo.trim().toUpperCase()
+    };
+    if (!safeClasses.includes(normalized.class)) {
+      onUpdateClasses([...safeClasses, normalized.class].sort((a, b) => a.localeCompare(b)));
+    }
+    onUpdate(normalized);
+    setEditingStudent(null);
+  };
+
+  const openBulkTransferModal = () => {
+    const firstSelected = students.find(s => selectedIds.includes(s.id));
+    const initialYear = firstSelected?.year || safeYears[0] || 1;
+    setBulkTransferTarget({ year: initialYear, class: '' });
+    setIsBulkTransferModalOpen(true);
+  };
+
+  const handleBulkTransferSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulkTransferTarget.class || selectedIds.length === 0) return;
+
+    const updatedStudents = students
+      .filter(s => selectedIds.includes(s.id))
+      .map(s => ({
+        ...s,
+        year: bulkTransferTarget.year,
+        class: bulkTransferTarget.class
+      }));
+
+    if (onBulkUpdate) {
+      onBulkUpdate(updatedStudents);
+    } else {
+      updatedStudents.forEach(s => onUpdate(s));
+    }
+
+    setIsBulkTransferModalOpen(false);
+    setSelectedIds([]);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${isRTL ? 'lg:flex-row-reverse' : ''}`}>
@@ -266,12 +348,20 @@ const StudentList: React.FC<StudentListProps> = ({
         </div>
         <div className={`flex flex-wrap gap-2 no-print ${isRTL ? 'flex-row-reverse' : ''}`}>
           {selectedIds.length > 0 && (
-            <button 
-              onClick={handleBulkDelete}
-              className="flex items-center gap-2 bg-red-600 text-white px-5 py-2.5 rounded-2xl font-bold shadow-lg shadow-red-500/20 hover:bg-red-700 transition-all text-xs"
-            >
-              <Trash2 size={16} /> {t.delete} {selectedIds.length} {t.students}
-            </button>
+            <>
+              <button 
+                onClick={openBulkTransferModal}
+                className="flex items-center gap-2 bg-amber-500 text-white px-5 py-2.5 rounded-2xl font-bold shadow-lg shadow-amber-500/20 hover:bg-amber-600 transition-all text-xs"
+              >
+                <ArrowRightLeft size={16} /> Tukar Kelas ({selectedIds.length})
+              </button>
+              <button 
+                onClick={handleBulkDelete}
+                className="flex items-center gap-2 bg-red-600 text-white px-5 py-2.5 rounded-2xl font-bold shadow-lg shadow-red-500/20 hover:bg-red-700 transition-all text-xs"
+              >
+                <Trash2 size={16} /> {t.delete} {selectedIds.length} {t.students}
+              </button>
+            </>
           )}
           <button onClick={() => setIsManageClassesOpen(true)} className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 px-4 py-2.5 rounded-2xl font-bold hover:bg-slate-50 shadow-sm transition-all text-xs">
             <Settings2 size={16} /> {t.manage_classes}
@@ -384,9 +474,22 @@ const StudentList: React.FC<StudentListProps> = ({
                     </span>
                   </td>
                   <td className={`px-10 py-6 ${isRTL ? 'text-left' : 'text-right'} no-print`}>
-                    <button onClick={() => onDelete(student.id)} className="p-2.5 text-slate-200 hover:text-red-500 transition-colors bg-white border border-transparent hover:border-red-100 rounded-xl">
-                      <Trash2 size={16} />
-                    </button>
+                    <div className={`flex items-center gap-1 ${isRTL ? 'justify-start' : 'justify-end'}`}>
+                      <button
+                        onClick={() => openEditStudentModal(student)}
+                        title="Edit / Pindah Kelas Murid"
+                        className="p-2.5 text-slate-400 hover:text-sky-600 transition-colors bg-white border border-transparent hover:border-sky-100 rounded-xl"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => onDelete(student.id)}
+                        title="Padam Murid"
+                        className="p-2.5 text-slate-200 hover:text-red-500 transition-colors bg-white border border-transparent hover:border-red-100 rounded-xl"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -616,6 +719,149 @@ const StudentList: React.FC<StudentListProps> = ({
               </div>
 
               <button type="submit" disabled={!bulkPasteData.class || !bulkPasteData.namesText.trim()} className="w-full bg-indigo-600 text-white py-5 rounded-[24px] font-black shadow-2xl disabled:opacity-30 uppercase tracking-widest">Daftar Pukal Sekarang</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Edit / Pindah Kelas Murid */}
+      {editingStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setEditingStudent(null)} />
+          <div className="relative bg-white rounded-[44px] shadow-2xl w-full max-w-md p-8 md:p-10 animate-in zoom-in-95 overflow-hidden border border-white/20">
+            <div className="absolute top-0 left-0 w-full h-2 bg-sky-600" />
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-black uppercase italic tracking-tighter text-slate-900 flex items-center gap-3">
+                <ArrowRightLeft className="text-sky-600" /> Edit & Pindah Kelas
+              </h3>
+              <button onClick={() => setEditingStudent(null)} className="text-slate-300 hover:text-slate-900"><X /></button>
+            </div>
+
+            <div className="mb-5 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-xs text-emerald-800 font-semibold">
+              <ShieldCheck className="text-emerald-600 shrink-0 mt-0.5" size={16} />
+              <span>Semua markah ujian, analisis item, rekod PBD, dan intervensi murid ini kekal terpelihara dan terus dipaparkan di bawah kelas baharu.</span>
+            </div>
+
+            <form onSubmit={handleSaveStudentEdit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nama Penuh Murid</label>
+                <input
+                  required
+                  className="w-full border-none rounded-2xl px-5 py-3.5 text-sm uppercase font-bold bg-slate-50 focus:ring-2 focus:ring-sky-500 transition-all"
+                  value={editingStudent.name}
+                  onChange={e => setEditingStudent({ ...editingStudent, name: e.target.value.toUpperCase() })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">No. Pendaftaran / MyKid</label>
+                <input
+                  required
+                  className="w-full border-none rounded-2xl px-5 py-3.5 text-sm font-bold bg-slate-50 focus:ring-2 focus:ring-sky-500 transition-all"
+                  value={editingStudent.regNo}
+                  onChange={e => setEditingStudent({ ...editingStudent, regNo: e.target.value.toUpperCase() })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Darjah</label>
+                  <select
+                    required
+                    className="w-full border-none rounded-2xl px-4 py-3.5 text-sm font-bold bg-slate-50"
+                    value={editingStudent.year}
+                    onChange={e => {
+                      const newYear = parseInt(e.target.value);
+                      const matching = safeClasses.filter(c => c.startsWith(String(newYear)));
+                      setEditingStudent({
+                        ...editingStudent,
+                        year: newYear,
+                        class: matching.length > 0 ? matching[0] : editingStudent.class
+                      });
+                    }}
+                  >
+                    {safeYears.map(y => <option key={y} value={y}>Darjah {y}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Kelas Baharu</label>
+                  <select
+                    required
+                    className="w-full border-none rounded-2xl px-4 py-3.5 text-sm font-bold bg-slate-50"
+                    value={editingStudent.class}
+                    onChange={e => setEditingStudent({ ...editingStudent, class: e.target.value })}
+                  >
+                    <option value="">Pilih...</option>
+                    {availableClassesForEditYear.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Jantina</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button type="button" onClick={() => setEditingStudent({ ...editingStudent, gender: Gender.LELAKI })} className={`py-3 rounded-2xl border-2 font-black text-[10px] uppercase tracking-widest transition-all ${editingStudent.gender === Gender.LELAKI ? 'bg-sky-600 text-white border-sky-600 shadow-lg' : 'bg-white text-slate-400'}`}>Lelaki</button>
+                  <button type="button" onClick={() => setEditingStudent({ ...editingStudent, gender: Gender.PEREMPUAN })} className={`py-3 rounded-2xl border-2 font-black text-[10px] uppercase tracking-widest transition-all ${editingStudent.gender === Gender.PEREMPUAN ? 'bg-pink-600 text-white border-pink-600 shadow-lg' : 'bg-white text-slate-400'}`}>Perempuan</button>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-3">
+                <button type="button" onClick={() => setEditingStudent(null)} className="flex-1 bg-slate-100 text-slate-600 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">Batal</button>
+                <button type="submit" disabled={!editingStudent.class || !editingStudent.name.trim()} className="flex-1 bg-sky-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-sky-700 disabled:opacity-40 transition-all">Simpan Perubahan</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Pindah Kelas Secara Pukal */}
+      {isBulkTransferModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setIsBulkTransferModalOpen(false)} />
+          <div className="relative bg-white rounded-[44px] shadow-2xl w-full max-w-md p-8 md:p-10 animate-in zoom-in-95 overflow-hidden border border-white/20">
+            <div className="absolute top-0 left-0 w-full h-2 bg-amber-500" />
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-black uppercase italic tracking-tighter text-slate-900 flex items-center gap-3">
+                <ArrowRightLeft className="text-amber-500" /> Tukar Kelas Pukal ({selectedIds.length} Murid)
+              </h3>
+              <button onClick={() => setIsBulkTransferModalOpen(false)} className="text-slate-300 hover:text-slate-900"><X /></button>
+            </div>
+
+            <div className="mb-5 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-xs text-emerald-800 font-semibold">
+              <ShieldCheck className="text-emerald-600 shrink-0 mt-0.5" size={16} />
+              <span>Rekod ujian, analisis item & PBD bagi kesemua {selectedIds.length} murid ini akan kekal dipautkan tanpa sebarang kehilangan data.</span>
+            </div>
+
+            <form onSubmit={handleBulkTransferSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Darjah Destinasi</label>
+                <select
+                  required
+                  className="w-full border-none rounded-2xl px-5 py-4 text-sm font-bold bg-slate-50"
+                  value={bulkTransferTarget.year}
+                  onChange={e => setBulkTransferTarget({ year: parseInt(e.target.value), class: '' })}
+                >
+                  {safeYears.map(y => <option key={y} value={y}>Darjah {y}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Kelas Destinasi</label>
+                <select
+                  required
+                  className="w-full border-none rounded-2xl px-5 py-4 text-sm font-bold bg-slate-50"
+                  value={bulkTransferTarget.class}
+                  onChange={e => setBulkTransferTarget({ ...bulkTransferTarget, class: e.target.value })}
+                >
+                  <option value="">Pilih Kelas Baharu...</option>
+                  {availableClassesForTransferYear.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-3">
+                <button type="button" onClick={() => setIsBulkTransferModalOpen(false)} className="flex-1 bg-slate-100 text-slate-600 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">Batal</button>
+                <button type="submit" disabled={!bulkTransferTarget.class} className="flex-1 bg-amber-500 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-amber-600 disabled:opacity-40 transition-all">Pindah Sekarang</button>
+              </div>
             </form>
           </div>
         </div>

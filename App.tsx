@@ -339,10 +339,25 @@ const App: React.FC = () => {
             notify(`${newStudents.length} murid ditambah`);
           }}
           onUpdate={async (s) => {
+            const oldStudent = students.find(st => st.id === s.id);
             const newList = students.map(st => st.id === s.id ? s : st);
             setStudents(newList);
             await syncToCloud(() => db.set(DB_KEYS.STUDENTS, newList));
-          }} 
+            if (oldStudent && oldStudent.class !== s.class) {
+              await db.log(user.id, user.name, `Menukar kelas murid ${s.name} dari ${oldStudent.class} ke ${s.class}`);
+              notify(`${s.name} berjaya ditukar ke kelas ${s.class}. Semua data ujian kekal terpelihara.`);
+            } else {
+              notify('Maklumat murid berjaya dikemas kini');
+            }
+          }}
+          onBulkUpdate={async (updatedStudents) => {
+            const updatedMap = new Map(updatedStudents.map(s => [s.id, s]));
+            const newList = students.map(st => updatedMap.get(st.id) || st);
+            setStudents(newList);
+            await syncToCloud(() => db.set(DB_KEYS.STUDENTS, newList));
+            await db.log(user.id, user.name, `Menukar kelas ${updatedStudents.length} murid secara pukal`);
+            notify(`${updatedStudents.length} murid berjaya dipindahkan kelas. Semua rekod ujian & PBD kekal.`);
+          }}
           onDelete={handleDeleteStudent} 
           onBulkDelete={handleBulkDeleteStudents} 
           onUpdateClasses={(c) => { setClasses(c); syncToCloud(() => db.set(DB_KEYS.CLASSES, c)); }}
